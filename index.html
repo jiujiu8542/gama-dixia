@@ -1,0 +1,2663 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地牢探险 - 肉鸽小游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#F97316',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                        danger: '#EF4444',
+                        success: '#10B981'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 引入游戏数据文件 -->
+    <script src="data/config.js"></script>
+    <script src="data/items.js"></script>
+    <script src="data/enemies.js"></script>
+    <script src="data/characters.js"></script>
+    <script src="data/pets.js"></script>
+    <script src="data/pets_extended.js"></script>
+    <script src="data/skills.js"></script>
+    <!-- 游戏图片资源 -->
+    <div class="hidden">
+        <img id="character-pets-sprite" src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/dcf36ff22b0642058c4a6c124aedc8fc~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026021410273901A550415BFF69364341&rrcfp=f06b921b&x-expires=1773628072&x-signature=B5SinYpFBImlYgrbjWTIsoa2v4U%3D" alt="角色和宠物图标">
+        <img id="items-sprite" src="https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/c9b4de50b44e4574a6cb3a0a641863a9~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026021410273901A550415BFF69364341&rrcfp=f06b921b&x-expires=1773628084&x-signature=SZ%2F3JADJZpcjIcaDrpwsvuIk7%2Fg%3D" alt="装备和物品图标">
+    </div>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-art {
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+            .game-container {
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            }
+            .animate-pulse-slow {
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .character-icon {
+                width: 64px;
+                height: 64px;
+                background-image: url('https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/dcf36ff22b0642058c4a6c124aedc8fc~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026021410273901A550415BFF69364341&rrcfp=f06b921b&x-expires=1773628072&x-signature=B5SinYpFBImlYgrbjWTIsoa2v4U%3D');
+                background-size: 320px 384px;
+                image-rendering: pixelated;
+            }
+            .pet-icon {
+                width: 64px;
+                height: 64px;
+                background-image: url('https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/dcf36ff22b0642058c4a6c124aedc8fc~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026021410273901A550415BFF69364341&rrcfp=f06b921b&x-expires=1773628072&x-signature=B5SinYpFBImlYgrbjWTIsoa2v4U%3D');
+                background-size: 320px 384px;
+                image-rendering: pixelated;
+            }
+            .item-icon {
+                width: 48px;
+                height: 48px;
+                background-image: url('https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/c9b4de50b44e4574a6cb3a0a641863a9~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=2026021410273901A550415BFF69364341&rrcfp=f06b921b&x-expires=1773628084&x-signature=SZ%2F3JADJZpcjIcaDrpwsvuIk7%2Fg%3D');
+                background-size: 240px 288px;
+                image-rendering: pixelated;
+            }
+        }
+    </style>
+    <style>
+        body {
+            background-color: #0F172A;
+            background-image: 
+                radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.2) 2%, transparent 0%), 
+                radial-gradient(circle at 75px 75px, rgba(255, 255, 255, 0.2) 2%, transparent 0%);
+            background-size: 100px 100px;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .tile {
+            width: 40px;
+            height: 40px;
+            display: inline-block;
+            vertical-align: top;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .player {
+            background-image: url('https://p9-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/55eea51652064a3ebfbebd7afc8711db~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=Ck7jGFdL4u5FW5JVyRyJxHKNGcM%3D');
+            z-index: 10;
+        }
+        
+        .enemy {
+            background-image: url('https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/90097dd26c6746debba041aa8a80a38a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=8zvBDNKg8Eft6vm5qIN9DcEEGS0%3D');
+            background-size: 120px;
+            background-position: center;
+        }
+        
+        .enemy-small {
+            background-position: 20px 20px;
+        }
+        
+        .enemy-medium {
+            background-position: center 20px;
+        }
+        
+        .enemy-large {
+            background-position: 20px center;
+        }
+        
+        .floor {
+            background-color: #1E293B;
+            border: 1px solid #334155;
+        }
+        
+        .wall {
+            background-color: #475569;
+            border: 1px solid #64748B;
+        }
+        
+        .door {
+            background-color: #92400E;
+            border: 1px solid #B45309;
+        }
+        
+        .stairs {
+            background-color: #4338CA;
+            border: 1px solid #6366F1;
+        }
+        
+        .item {
+            width: 30px;
+            height: 30px;
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 5;
+        }
+        
+        .sword {
+            background-image: url('https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/e116394a61e24aaf8c7c954c8d1c130a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=%2BBxjn1DKLERKXjoRTTCBdMfoLuo%3D');
+            background-position: 0px 0px;
+        }
+        
+        .shield {
+            background-image: url('https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/e116394a61e24aaf8c7c954c8d1c130a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=%2BBxjn1DKLERKXjoRTTCBdMfoLuo%3D');
+            background-position: 30px 0px;
+        }
+        
+        .potion {
+            background-image: url('https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/e116394a61e24aaf8c7c954c8d1c130a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=%2BBxjn1DKLERKXjoRTTCBdMfoLuo%3D');
+            background-position: 0px 30px;
+        }
+        
+        .coin {
+            background-image: url('https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/e116394a61e24aaf8c7c954c8d1c130a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=%2BBxjn1DKLERKXjoRTTCBdMfoLuo%3D');
+            background-position: 30px 30px;
+        }
+        
+        .equipment-slot {
+            width: 40px;
+            height: 40px;
+            background-color: #334155;
+            border: 2px solid #64748B;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: #0F172A;
+            border: 1px solid #64748B;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .damage-text {
+            position: absolute;
+            color: #EF4444;
+            font-weight: bold;
+            animation: float-up 1s ease-out forwards;
+            z-index: 20;
+        }
+        
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }
+        
+        .floating-text {
+            position: absolute;
+            color: #10B981;
+            font-weight: bold;
+            animation: float-up 1s ease-out forwards;
+            z-index: 20;
+        }
+        
+        .level-up {
+            animation: level-up 2s ease-out;
+        }
+        
+        @keyframes level-up {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 text-light">
+    <div class="text-center mb-4">
+        <h1 class="text-4xl font-bold text-primary text-shadow">地牢探险</h1>
+        <p class="text-secondary">肉鸽风格的冒险游戏</p>
+    </div>
+
+    <div class="flex flex-col md:flex-row gap-6">
+        <!-- 游戏信息面板 -->
+        <div class="bg-dark rounded-lg p-4 w-full md:w-64 game-container">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-2 text-primary">角色信息</h2>
+                <div class="flex items-center mb-2">
+                    <div class="w-10 h-10 player pixel-art mr-2"></div>
+                    <div>
+                        <div class="font-bold" id="player-name">冒险者</div>
+                        <div class="text-xs text-gray-400">等级 <span id="player-level">1</span> <span id="player-class"></span></div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div class="flex justify-between text-sm">
+                        <span>生命值</span>
+                        <span id="player-hp">100/100</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="hp-bar" class="bg-danger h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div class="flex justify-between text-sm">
+                        <span>经验值</span>
+                        <span id="player-exp">0/100</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="exp-bar" class="bg-secondary h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-sm mb-2">
+                    <span>金币</span>
+                    <span id="player-gold">0</span>
+                </div>
+                <div class="flex justify-between text-sm mb-4">
+                    <span>速度</span>
+                    <span id="player-speed">10</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-2 text-primary">装备</h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <div class="text-xs mb-1">武器</div>
+                        <div id="weapon-slot" class="equipment-slot" data-tooltip="武器"></div>
+                    </div>
+                    <div>
+                        <div class="text-xs mb-1">护甲</div>
+                        <div id="armor-slot" class="equipment-slot" data-tooltip="护甲"></div>
+                    </div>
+                    <div>
+                        <div class="text-xs mb-1">饰品</div>
+                        <div id="accessory-slot" class="equipment-slot" data-tooltip="饰品"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 宠物信息 -->
+            <div id="pet-section" class="mb-6 hidden">
+                <h2 class="text-xl font-bold mb-2 text-primary">宠物</h2>
+                <div class="flex items-center mb-2">
+                    <div id="pet-icon" class="w-10 h-10 pet-icon mr-2 bg-gray-700 rounded hidden"></div>
+                    <div>
+                        <div class="font-bold" id="pet-name">宠物</div>
+                        <div class="text-xs text-gray-400">等级 <span id="pet-level">1</span></div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div class="flex justify-between text-sm">
+                        <span>生命值</span>
+                        <span id="pet-hp">50/50</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div id="pet-hp-bar" class="bg-danger h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <span>攻击力</span>
+                        <span id="pet-attack">8</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>防御力</span>
+                        <span id="pet-defense">4</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>速度</span>
+                        <span id="pet-speed">12</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 技能栏 -->
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-2 text-primary">技能</h2>
+                <div id="skills-container" class="grid grid-cols-2 gap-2">
+                    <!-- 技能将通过JS动态添加 -->
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-xl font-bold mb-2 text-primary">物品</h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <div class="text-xs mb-1">治疗药水</div>
+                        <div class="flex items-center justify-center">
+                            <div id="health-potion-icon" class="w-6 h-6 potion pixel-art"></div>
+                            <span id="health-potion-count">0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs mb-1">魔法药水</div>
+                        <div class="flex items-center justify-center">
+                            <div id="mana-potion-icon" class="w-6 h-6 potion pixel-art" style="background-position: 30px 30px;"></div>
+                            <span id="mana-potion-count">0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs mb-1">卷轴</div>
+                        <div class="flex items-center justify-center">
+                            <div id="scroll-icon" class="w-6 h-6 potion pixel-art" style="background-position: 0px 30px;"></div>
+                            <span id="scroll-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-bold mb-2 text-primary">属性</h2>
+                <div class="text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <span>攻击力</span>
+                        <span id="player-attack">10</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>防御力</span>
+                        <span id="player-defense">5</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>魔法强度</span>
+                        <span id="player-magic">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>闪避率</span>
+                        <span id="player-evasion">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏主界面 -->
+        <div class="flex flex-col items-center">
+            <div class="bg-dark rounded-lg p-2 game-container relative">
+                <div id="game-map" class="grid grid-cols-10 gap-0 relative"></div>
+                
+                <!-- 技能栏 -->
+                <div id="skill-bar" class="absolute bottom-2 left-0 right-0 flex justify-center gap-2 z-30 hidden">
+                    <div class="skill-button bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded flex items-center justify-center cursor-pointer" data-skill="0">
+                        <span class="text-xs">1</span>
+                    </div>
+                    <div class="skill-button bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded flex items-center justify-center cursor-pointer" data-skill="1">
+                        <span class="text-xs">2</span>
+                    </div>
+                    <div class="skill-button bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded flex items-center justify-center cursor-pointer" data-skill="2">
+                        <span class="text-xs">3</span>
+                    </div>
+                    <div class="skill-button bg-gray-700 hover:bg-gray-600 w-12 h-12 rounded flex items-center justify-center cursor-pointer" data-skill="3">
+                        <span class="text-xs">4</span>
+                    </div>
+                </div>
+                
+                <!-- 游戏菜单 -->
+                <div id="game-menu" class="absolute top-0 left-0 w-full h-full bg-dark bg-opacity-90 flex flex-col items-center justify-center z-50 hidden">
+                    <h2 class="text-3xl font-bold mb-6 text-primary">游戏菜单</h2>
+                    <div class="flex flex-col gap-4 w-64">
+                        <button id="resume-game" class="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            继续游戏
+                        </button>
+                        <button id="save-game" class="bg-secondary hover:bg-orange-600 text-white font-bold py-2 px-4 rounded">
+                            保存游戏
+                        </button>
+                        <button id="load-game" class="bg-secondary hover:bg-orange-600 text-white font-bold py-2 px-4 rounded">
+                            加载游戏
+                        </button>
+                        <button id="new-game" class="bg-danger hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                            新游戏
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 游戏结束菜单 -->
+                <div id="game-over" class="absolute top-0 left-0 w-full h-full bg-dark bg-opacity-90 flex flex-col items-center justify-center z-50 hidden">
+                    <h2 class="text-3xl font-bold mb-2 text-danger">游戏结束</h2>
+                    <p class="text-xl mb-6">你在地牢中倒下了</p>
+                    <p class="mb-6">达到层数: <span id="final-level">1</span></p>
+                    <div class="flex flex-col gap-4 w-64">
+                        <button id="restart-game" class="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            重新开始
+                        </button>
+                        <button id="main-menu" class="bg-secondary hover:bg-orange-600 text-white font-bold py-2 px-4 rounded">
+                            主菜单
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 胜利菜单 -->
+                <div id="game-win" class="absolute top-0 left-0 w-full h-full bg-dark bg-opacity-90 flex flex-col items-center justify-center z-50 hidden">
+                    <h2 class="text-3xl font-bold mb-2 text-success">恭喜通关!</h2>
+                    <p class="text-xl mb-6">你成功逃离了地牢!</p>
+                    <p class="mb-6">达到层数: <span id="win-level">10</span></p>
+                    <div class="flex flex-col gap-4 w-64">
+                        <button id="play-again" class="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                            再玩一次
+                        </button>
+                        <button id="win-main-menu" class="bg-secondary hover:bg-orange-600 text-white font-bold py-2 px-4 rounded">
+                            主菜单
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 物品拾取提示 -->
+                <div id="item-tooltip" class="absolute bg-dark bg-opacity-90 p-2 rounded text-sm hidden z-40">
+                    <div id="item-name" class="font-bold"></div>
+                    <div id="item-desc"></div>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex justify-between w-full max-w-md">
+                <div class="text-sm">
+                    <span class="text-primary">当前层数:</span> <span id="current-level">1</span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="open-menu" class="bg-dark hover:bg-gray-700 text-white py-1 px-3 rounded text-sm">
+                        菜单
+                    </button>
+                    <button id="use-potion" class="bg-secondary hover:bg-orange-600 text-white py-1 px-3 rounded text-sm" disabled="">
+                        使用药水
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 战斗日志 -->
+        <div class="bg-dark rounded-lg p-4 w-full md:w-64 game-container">
+            <h2 class="text-xl font-bold mb-2 text-primary">战斗日志</h2>
+            <div id="combat-log" class="h-64 overflow-y-auto text-sm space-y-1">
+                <div class="text-gray-400">欢迎来到地牢探险!</div>
+                <div class="text-gray-400">使用方向键移动，收集物品，击败敌人!</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-6 text-center text-sm text-gray-400">
+        <p>操作说明: 方向键移动，M键打开菜单，P键使用药水</p>
+    </div>
+
+    <script>
+        // 游戏状态
+        const gameState = {
+            player: null,
+            currentLevel: 1,
+            map: [],
+            enemies: [],
+            items: [],
+            gameRunning: false,
+            gameOver: false,
+            showItemTooltip: false,
+            itemTooltip: { x: 0, y: 0, item: null },
+            selectedCharacter: null,
+            turnCounter: 0,
+            wildPets: [] // 野生宠物
+        };
+
+        // 游戏配置
+        const config = {
+            mapWidth: 10,
+            mapHeight: 10,
+            tileSize: 40,
+            maxLevels: 10,
+            enemySpawnRate: 0.15,
+            itemSpawnRate: 0.1,
+            playerSpeed: 100, // 移动延迟(ms)
+            enemySpeed: 300, // 敌人移动延迟(ms)
+            expMultiplier: 1.5, // 每级所需经验倍数
+            levelUpBonus: {
+                hp: 20,
+                attack: 3,
+                defense: 2
+            }
+        };
+
+        // 物品数据库
+        const itemDatabase = {
+            weapons: [
+                { id: 'wooden_sword', name: '木剑', attack: 5, description: '一把简单的木剑，提供5点攻击力' },
+                { id: 'iron_sword', name: '铁剑', attack: 10, description: '一把坚固的铁剑，提供10点攻击力' },
+                { id: 'steel_sword', name: '钢剑', attack: 15, description: '一把锋利的钢剑，提供15点攻击力' },
+                { id: 'magic_sword', name: '魔法剑', attack: 20, description: '一把附魔的魔法剑，提供20点攻击力' }
+            ],
+            armors: [
+                { id: 'leather_armor', name: '皮甲', defense: 3, description: '简单的皮甲，提供3点防御力' },
+                { id: 'chain_armor', name: '锁子甲', defense: 7, description: '金属链甲，提供7点防御力' },
+                { id: 'plate_armor', name: '板甲', defense: 12, description: '厚重的板甲，提供12点防御力' },
+                { id: 'magic_armor', name: '魔法护甲', defense: 15, description: '附魔的护甲，提供15点防御力' }
+            ],
+            potions: {
+                name: '治疗药水',
+                description: '恢复50点生命值',
+                healAmount: 50
+            }
+        };
+
+        // 敌人数据库
+        const enemyDatabase = [
+            {
+                type: 'slime',
+                name: '史莱姆',
+                hp: 20,
+                attack: 5,
+                defense: 2,
+                exp: 10,
+                gold: 5,
+                size: 'small'
+            },
+            {
+                type: 'goblin',
+                name: '哥布林',
+                hp: 35,
+                attack: 8,
+                defense: 3,
+                exp: 15,
+                gold: 8,
+                size: 'small'
+            },
+            {
+                type: 'skeleton',
+                name: '骷髅',
+                hp: 45,
+                attack: 10,
+                defense: 5,
+                exp: 20,
+                gold: 10,
+                size: 'medium'
+            },
+            {
+                type: 'orc',
+                name: '兽人',
+                hp: 60,
+                attack: 12,
+                defense: 8,
+                exp: 25,
+                gold: 15,
+                size: 'medium'
+            },
+            {
+                type: 'troll',
+                name: '巨魔',
+                hp: 80,
+                attack: 15,
+                defense: 10,
+                exp: 35,
+                gold: 20,
+                size: 'large'
+            },
+            {
+                type: 'dragon',
+                name: '龙',
+                hp: 120,
+                attack: 20,
+                defense: 15,
+                exp: 50,
+                gold: 30,
+                size: 'large'
+            }
+        ];
+
+        // DOM元素
+        const gameMap = document.getElementById('game-map');
+        const combatLog = document.getElementById('combat-log');
+        const playerLevel = document.getElementById('player-level');
+        const playerHp = document.getElementById('player-hp');
+        const hpBar = document.getElementById('hp-bar');
+        const playerExp = document.getElementById('player-exp');
+        const expBar = document.getElementById('exp-bar');
+        const playerGold = document.getElementById('player-gold');
+        const playerAttack = document.getElementById('player-attack');
+        const playerDefense = document.getElementById('player-defense');
+        const weaponSlot = document.getElementById('weapon-slot');
+        const armorSlot = document.getElementById('armor-slot');
+        const potionCount = document.getElementById('potion-count');
+        const usePotionBtn = document.getElementById('use-potion');
+        const currentLevelDisplay = document.getElementById('current-level');
+        const gameMenu = document.getElementById('game-menu');
+        const gameOver = document.getElementById('game-over');
+        const gameWin = document.getElementById('game-win');
+        const finalLevelDisplay = document.getElementById('final-level');
+        const winLevelDisplay = document.getElementById('win-level');
+        const itemTooltip = document.getElementById('item-tooltip');
+        const itemName = document.getElementById('item-name');
+        const itemDesc = document.getElementById('item-desc');
+
+        // 游戏循环
+        let gameLoop;
+        let lastPlayerMove = 0;
+        let lastEnemyMove = 0;
+
+        // 初始化游戏
+        function initGame() {
+            // 设置地图大小
+            gameMap.style.gridTemplateColumns = `repeat(${config.mapWidth}, ${config.tileSize}px)`;
+            gameMap.style.gridTemplateRows = `repeat(${config.mapHeight}, ${config.tileSize}px)`;
+            
+            // 显示角色选择界面
+            showCharacterSelection();
+            
+            // 添加事件监听器
+            document.addEventListener('keydown', handleKeyDown);
+            document.getElementById('open-menu').addEventListener('click', toggleMenu);
+            document.getElementById('resume-game').addEventListener('click', toggleMenu);
+            document.getElementById('save-game').addEventListener('click', saveGame);
+            document.getElementById('load-game').addEventListener('click', () => {
+                const savedGame = localStorage.getItem('roguelikeSave');
+                if (savedGame) {
+                    loadGame(savedGame);
+                    toggleMenu();
+                } else {
+                    addLog('没有找到保存的游戏');
+                }
+            });
+            document.getElementById('new-game').addEventListener('click', startNewGame);
+            document.getElementById('restart-game').addEventListener('click', startNewGame);
+            document.getElementById('main-menu').addEventListener('click', () => {
+                gameOver.classList.add('hidden');
+                toggleMenu();
+            });
+            document.getElementById('play-again').addEventListener('click', startNewGame);
+            document.getElementById('win-main-menu').addEventListener('click', () => {
+                gameWin.classList.add('hidden');
+                toggleMenu();
+            });
+            usePotionBtn.addEventListener('click', usePotion);
+            
+            // 开始游戏循环
+            gameLoop = setInterval(updateGame, 16); // ~60 FPS
+        }
+
+        // 显示角色选择界面
+        function showCharacterSelection() {
+            // 创建角色选择界面
+            const characterSelection = document.createElement('div');
+            characterSelection.id = 'character-selection';
+            characterSelection.className = 'absolute top-0 left-0 w-full h-full bg-dark bg-opacity-95 flex flex-col items-center justify-center z-50';
+            
+            characterSelection.innerHTML = `
+                <h2 class="text-3xl font-bold mb-6 text-primary">选择你的角色</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 w-full max-w-5xl px-4">
+                    ${characterDatabase.map((char, index) => `
+                        <div class="character-card bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition-colors" data-character="${char.id}">
+                            <div class="flex justify-center mb-4">
+                                <div class="character-icon" style="background-position: -${index * 64}px 0;"></div>
+                            </div>
+                            <h3 class="text-xl font-bold text-secondary mb-2">${char.name}</h3>
+                            <p class="text-sm text-gray-300 mb-4">${char.description}</p>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div>生命值: ${char.baseStats.hp}</div>
+                                <div>攻击力: ${char.baseStats.attack}</div>
+                                <div>防御力: ${char.baseStats.defense}</div>
+                                <div>魔法值: ${char.baseStats.magic}</div>
+                                <div>速度: ${char.baseStats.speed}</div>
+                            </div>
+                            <div class="mt-4">
+                                <div class="text-sm font-bold mb-1">技能:</div>
+                                <div class="text-xs text-gray-300">
+                                    ${char.skills.map(skillId => {
+                                        const skill = skillDatabase.characterSkills[skillId];
+                                        return `<div>${skill.name}: ${skill.description}</div>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                            ${char.startingPet ? `
+                                <div class="mt-4">
+                                    <div class="text-sm font-bold mb-1">初始宠物:</div>
+                                    <div class="text-xs text-gray-300">${petDatabase.find(pet => pet.id === char.startingPet)?.name}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.body.appendChild(characterSelection);
+            
+            // 添加角色选择事件
+            document.querySelectorAll('.character-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const characterId = card.dataset.character;
+                    gameState.selectedCharacter = characterDatabase.find(char => char.id === characterId);
+                    characterSelection.remove();
+                    startNewGame();
+                });
+            });
+        }
+        
+        // 开始新游戏
+        function startNewGame() {
+            // 创建玩家角色
+            const character = gameState.selectedCharacter || characterDatabase[0];
+            
+            // 初始化玩家属性
+            gameState.player = {
+                ...character.baseStats,
+                x: 0,
+                y: 0,
+                maxHp: character.baseStats.hp,
+                exp: 0,
+                nextLevelExp: 100,
+                level: 1,
+                gold: 500,
+                magic: character.baseStats.magic || 0,
+                speed: character.baseStats.speed || 10,
+                evasion: 0,
+                magicDefense: 0,
+                name: character.name,
+                characterId: character.id,
+                weapon: null,
+                armor: null,
+                legs: null,
+                boots: null,
+                accessory: null,
+                potions: {},
+                scrolls: {},
+                pokeballs: {},
+                petInventory: [],
+                statPoints: 0
+                skills: character.skills.map(skillId => ({
+                    ...skillDatabase.characterSkills[skillId],
+                    currentCooldown: 0
+                })),
+                buffs: [],
+                pet: character.startingPet ? {
+                    ...petDatabase.find(pet => pet.id === character.startingPet),
+                    level: 1,
+                    hp: petDatabase.find(pet => pet.id === character.startingPet).stats.hp,
+                    maxHp: petDatabase.find(pet => pet.id === character.startingPet).stats.hp,
+                    attack: petDatabase.find(pet => pet.id === character.startingPet).stats.attack,
+                    defense: petDatabase.find(pet => pet.id === character.startingPet).stats.defense,
+                    speed: petDatabase.find(pet => pet.id === character.startingPet).stats.speed,
+                    buffs: [],
+                    skills: petDatabase.find(pet => pet.id === character.startingPet).skills.map(skillId => ({
+                        ...skillDatabase.petSkills[skillId],
+                        currentCooldown: 0
+                    })),
+                    owner: null // 会在下面设置
+                } : null
+            };
+            
+            // 设置宠物的主人引用
+            if (gameState.player.pet) {
+                gameState.player.pet.owner = gameState.player;
+            }
+            
+            // 装备初始物品
+            if (character.startingItems) {
+                character.startingItems.forEach(itemId => {
+                    const item = itemDatabase.weapons.find(w => w.id === itemId) || 
+                                itemDatabase.armors.find(a => a.id === itemId);
+                    
+                    if (item) {
+                        if (itemId.includes('sword') || itemId.includes('wand') || itemId.includes('staff') || 
+                            itemId.includes('dagger') || itemId.includes('orb') || itemId.includes('contract')) {
+                            gameState.player.weapon = item;
+                        } else if (itemId.includes('armor') || itemId.includes('robe') || itemId.includes('cloak') || 
+                                  itemId.includes('vest')) {
+                            gameState.player.armor = item;
+                        }
+                    }
+                });
+            }
+            
+            // 初始化药水
+            gameState.player.potions = {
+                health_potion: 2
+            };
+            
+            gameState.currentLevel = 1;
+            gameState.enemies = [];
+            gameState.items = [];
+            gameState.wildPets = [];
+            gameState.gameRunning = true;
+            gameState.gameOver = false;
+            gameState.turnCounter = 0;
+            
+            // 初始化精灵球
+            gameState.player.pokeballs = {
+                pokeball: 3
+            };
+            
+            // 生成第一层地图
+            generateMap();
+            
+            // 更新UI
+            updateUI();
+            
+            // 隐藏菜单
+            gameMenu.classList.add('hidden');
+            gameOver.classList.add('hidden');
+            gameWin.classList.add('hidden');
+            
+            // 添加日志
+            addLog(`开始新的冒险! ${gameState.player.name}进入了地牢`);
+            addLog(`你进入了地牢第${gameState.currentLevel}层`);
+            
+            // 如果有宠物，添加宠物日志
+            if (gameState.player.pet) {
+                addLog(`${gameState.player.pet.name}加入了你的队伍!`);
+            }
+        }
+
+        // 生成地图
+        function generateMap() {
+            // 创建空地图
+            gameState.map = [];
+            for (let y = 0; y < config.mapHeight; y++) {
+                gameState.map[y] = [];
+                for (let x = 0; x < config.mapWidth; x++) {
+                    // 默认是墙
+                    gameState.map[y][x] = 'wall';
+                }
+            }
+            
+            // 使用随机房间生成算法
+            const numRooms = 3 + Math.floor(Math.random() * 3); // 3-5个房间
+            const rooms = [];
+            
+            // 生成房间
+            for (let i = 0; i < numRooms; i++) {
+                const roomWidth = 3 + Math.floor(Math.random() * 3); // 3-5宽
+                const roomHeight = 3 + Math.floor(Math.random() * 3); // 3-5高
+                const roomX = 1 + Math.floor(Math.random() * (config.mapWidth - roomWidth - 2));
+                const roomY = 1 + Math.floor(Math.random() * (config.mapHeight - roomHeight - 2));
+                
+                // 检查是否与现有房间重叠
+                let overlaps = false;
+                for (const room of rooms) {
+                    if (
+                        roomX <= room.x + room.width &&
+                        roomX + roomWidth >= room.x &&
+                        roomY <= room.y + room.height &&
+                        roomY + roomHeight >= room.y
+                    ) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                
+                if (!overlaps) {
+                    // 添加房间到列表
+                    rooms.push({
+                        x: roomX,
+                        y: roomY,
+                        width: roomWidth,
+                        height: roomHeight
+                    });
+                    
+                    // 在地图上标记房间为地板
+                    for (let y = roomY; y < roomY + roomHeight; y++) {
+                        for (let x = roomX; x < roomX + roomWidth; x++) {
+                            gameState.map[y][x] = 'floor';
+                        }
+                    }
+                }
+            }
+            
+            // 连接房间
+            for (let i = 0; i < rooms.length - 1; i++) {
+                const roomA = rooms[i];
+                const roomB = rooms[i + 1];
+                
+                // 计算房间中心点
+                const centerA = {
+                    x: Math.floor(roomA.x + roomA.width / 2),
+                    y: Math.floor(roomA.y + roomA.height / 2)
+                };
+                
+                const centerB = {
+                    x: Math.floor(roomB.x + roomB.width / 2),
+                    y: Math.floor(roomB.y + roomB.height / 2)
+                };
+                
+                // 随机决定先水平还是先垂直连接
+                if (Math.random() > 0.5) {
+                    // 先水平后垂直
+                    createHorizontalTunnel(centerA.x, centerB.x, centerA.y);
+                    createVerticalTunnel(centerA.y, centerB.y, centerB.x);
+                } else {
+                    // 先垂直后水平
+                    createVerticalTunnel(centerA.y, centerB.y, centerA.x);
+                    createHorizontalTunnel(centerA.x, centerB.x, centerB.y);
+                }
+            }
+            
+            // 放置入口（玩家起始位置）在第一个房间
+            const startRoom = rooms[0];
+            gameState.player.x = Math.floor(startRoom.x + startRoom.width / 2);
+            gameState.player.y = Math.floor(startRoom.y + startRoom.height / 2);
+            
+            // 如果有宠物，设置宠物位置在玩家旁边
+            if (gameState.player.pet) {
+                gameState.player.pet.x = gameState.player.x + 1;
+                gameState.player.pet.y = gameState.player.y;
+            }
+            
+            // 放置出口（楼梯）在最后一个房间
+            const endRoom = rooms[rooms.length - 1];
+            const stairsX = Math.floor(endRoom.x + endRoom.width / 2);
+            const stairsY = Math.floor(endRoom.y + endRoom.height / 2);
+            gameState.map[stairsY][stairsX] = 'stairs';
+            
+            // 生成敌人
+            gameState.enemies = [];
+            for (let i = 0; i < rooms.length; i++) {
+                const room = rooms[i];
+                // 跳过起始房间
+                if (i === 0) continue;
+                
+                // 根据当前层数和房间大小决定敌人数量
+                const maxEnemies = Math.min(
+                    Math.floor((room.width * room.height) / 10),
+                    2 + Math.floor(gameState.currentLevel / 2)
+                );
+                
+                for (let j = 0; j < maxEnemies; j++) {
+                    if (Math.random() < config.enemySpawnRate) {
+                        const x = room.x + Math.floor(Math.random() * room.width);
+                        const y = room.y + Math.floor(Math.random() * room.height);
+                        
+                        // 确保不会生成在楼梯上
+                        if (gameState.map[y][x] !== 'stairs') {
+                            // 根据当前层数选择敌人类型
+                            let enemyType;
+                            const levelFactor = Math.min(gameState.currentLevel / config.maxLevels, 1);
+                            const enemyIndex = Math.min(
+                                Math.floor(levelFactor * enemyDatabase.length),
+                                enemyDatabase.length - 1
+                            );
+                            
+                            // 有小概率生成更高级的敌人
+                            if (Math.random() < 0.1 && enemyIndex < enemyDatabase.length - 1) {
+                                enemyType = enemyDatabase[enemyIndex + 1];
+                            } else {
+                                enemyType = enemyDatabase[enemyIndex];
+                            }
+                            
+                            // 创建敌人实例
+                            gameState.enemies.push({
+                                ...enemyType,
+                                x: x,
+                                y: y,
+                                maxHp: enemyType.hp,
+                                speed: enemyType.speed || 10
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // 生成物品
+            gameState.items = [];
+            for (const room of rooms) {
+                // 根据房间大小决定物品数量
+                const maxItems = Math.floor((room.width * room.height) / 15);
+                
+                for (let i = 0; i < maxItems; i++) {
+                    if (Math.random() < config.itemSpawnRate) {
+                        const x = room.x + Math.floor(Math.random() * room.width);
+                        const y = room.y + Math.floor(Math.random() * room.height);
+                        
+                        // 确保不会生成在楼梯或玩家位置上
+                        if (
+                            gameState.map[y][x] !== 'stairs' &&
+                            !(x === gameState.player.x && y === gameState.player.y) &&
+                            !(gameState.player.pet && x === gameState.player.pet.x && y === gameState.player.pet.y)
+                        ) {
+                            // 随机选择物品类型
+                            const itemType = Math.random();
+                            
+                            if (itemType < 0.25) {
+                                // 武器
+                                const availableWeapons = itemDatabase.weapons.filter(
+                                    weapon => weapon.class === 'all' || weapon.class === gameState.player.characterId
+                                );
+                                
+                                if (availableWeapons.length > 0) {
+                                    const weaponIndex = Math.min(
+                                        Math.floor(Math.random() * availableWeapons.length),
+                                        Math.floor(gameState.currentLevel / 3)
+                                    );
+                                    
+                                    gameState.items.push({
+                                        type: 'weapon',
+                                        item: availableWeapons[weaponIndex],
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            } else if (itemType < 0.5) {
+                                // 护甲
+                                const availableArmors = itemDatabase.armors.filter(
+                                    armor => armor.class === 'all' || armor.class === gameState.player.characterId
+                                );
+                                
+                                if (availableArmors.length > 0) {
+                                    const armorIndex = Math.min(
+                                        Math.floor(Math.random() * availableArmors.length),
+                                        Math.floor(gameState.currentLevel / 3)
+                                    );
+                                    
+                                    gameState.items.push({
+                                        type: 'armor',
+                                        item: availableArmors[armorIndex],
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            } else if (itemType < 0.65) {
+                                // 饰品
+                                const availableAccessories = itemDatabase.accessories.filter(
+                                    accessory => !accessory.class || accessory.class === gameState.player.characterId
+                                );
+                                
+                                if (availableAccessories.length > 0) {
+                                    const accessoryIndex = Math.floor(Math.random() * availableAccessories.length);
+                                    
+                                    gameState.items.push({
+                                        type: 'accessory',
+                                        item: availableAccessories[accessoryIndex],
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            } else if (itemType < 0.85) {
+                                // 药水
+                                const potionKeys = Object.keys(itemDatabase.potions).filter(
+                                    key => !itemDatabase.potions[key].class || itemDatabase.potions[key].class === gameState.player.characterId
+                                );
+                                
+                                if (potionKeys.length > 0) {
+                                    const potionKey = potionKeys[Math.floor(Math.random() * potionKeys.length)];
+                                    
+                                    gameState.items.push({
+                                        type: 'potion',
+                                        item: { ...itemDatabase.potions[potionKey], id: potionKey },
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            } else if (itemType < 0.95) {
+                                // 卷轴
+                                const scrollKeys = Object.keys(itemDatabase.scrolls);
+                                
+                                if (scrollKeys.length > 0) {
+                                    const scrollKey = scrollKeys[Math.floor(Math.random() * scrollKeys.length)];
+                                    
+                                    gameState.items.push({
+                                        type: 'scroll',
+                                        item: { ...itemDatabase.scrolls[scrollKey], id: scrollKey },
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            } else {
+                                // 金币
+                                const goldAmount = 5 + Math.floor(Math.random() * 10) + Math.floor(gameState.currentLevel * 2);
+                                
+                                gameState.items.push({
+                                    type: 'gold',
+                                    amount: goldAmount,
+                                    x: x,
+                                    y: y
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 渲染地图
+            renderMap();
+        }
+
+        // 创建水平通道
+        function createHorizontalTunnel(x1, x2, y) {
+            const start = Math.min(x1, x2);
+            const end = Math.max(x1, x2);
+            
+            for (let x = start; x <= end; x++) {
+                gameState.map[y][x] = 'floor';
+            }
+        }
+
+        // 创建垂直通道
+        function createVerticalTunnel(y1, y2, x) {
+            const start = Math.min(y1, y2);
+            const end = Math.max(y1, y2);
+            
+            for (let y = start; y <= end; y++) {
+                gameState.map[y][x] = 'floor';
+            }
+        }
+
+        // 渲染地图
+        function renderMap() {
+            // 清空地图
+            gameMap.innerHTML = '';
+            
+            // 渲染地图瓦片
+            for (let y = 0; y < config.mapHeight; y++) {
+                for (let x = 0; x < config.mapWidth; x++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile', gameState.map[y][x]);
+                    tile.dataset.x = x;
+                    tile.dataset.y = y;
+                    gameMap.appendChild(tile);
+                }
+            }
+            
+            // 渲染物品
+            for (const item of gameState.items) {
+                const itemElement = document.createElement('div');
+                itemElement.classList.add('item');
+                
+                // 设置物品类型和位置
+                switch (item.type) {
+                    case 'weapon':
+                        itemElement.classList.add('sword');
+                        break;
+                    case 'armor':
+                        itemElement.classList.add('shield');
+                        break;
+                    case 'accessory':
+                        itemElement.classList.add('coin'); // 使用金币图标代替
+                        break;
+                    case 'potion':
+                        itemElement.classList.add('potion');
+                        break;
+                    case 'scroll':
+                        itemElement.classList.add('coin'); // 使用金币图标代替
+                        break;
+                    case 'gold':
+                        itemElement.classList.add('coin');
+                        break;
+                }
+                
+                itemElement.style.left = `${item.x * config.tileSize + 5}px`;
+                itemElement.style.top = `${item.y * config.tileSize + 5}px`;
+                itemElement.dataset.itemIndex = gameState.items.indexOf(item);
+                
+                // 添加鼠标悬停事件
+                itemElement.addEventListener('mouseenter', () => showItemTooltip(item, itemElement));
+                itemElement.addEventListener('mouseleave', hideItemTooltip);
+                
+                gameMap.appendChild(itemElement);
+            }
+            
+            // 渲染敌人
+            for (const enemy of gameState.enemies) {
+                const enemyElement = document.createElement('div');
+                enemyElement.classList.add('tile', 'enemy', `enemy-${enemy.size}`);
+                enemyElement.style.position = 'absolute';
+                enemyElement.style.left = `${enemy.x * config.tileSize}px`;
+                enemyElement.style.top = `${enemy.y * config.tileSize}px`;
+                enemyElement.dataset.enemyIndex = gameState.enemies.indexOf(enemy);
+                
+                // 添加血条
+                const healthBar = document.createElement('div');
+                healthBar.classList.add('absolute', 'bottom-0', 'left-0', 'right-0', 'h-1', 'bg-gray-700');
+                
+                const healthFill = document.createElement('div');
+                healthFill.classList.add('h-full', 'bg-danger');
+                healthFill.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+                
+                healthBar.appendChild(healthFill);
+                enemyElement.appendChild(healthBar);
+                
+                gameMap.appendChild(enemyElement);
+            }
+            
+            // 渲染宠物
+            if (gameState.player.pet && gameState.player.pet.hp > 0) {
+                const petElement = document.createElement('div');
+                petElement.classList.add('tile', 'player'); // 使用玩家图标代替
+                petElement.style.position = 'absolute';
+                petElement.style.left = `${gameState.player.pet.x * config.tileSize}px`;
+                petElement.style.top = `${gameState.player.pet.y * config.tileSize}px`;
+                petElement.style.opacity = '0.8'; // 稍微透明以区分玩家
+                
+                // 添加血条
+                const healthBar = document.createElement('div');
+                healthBar.classList.add('absolute', 'bottom-0', 'left-0', 'right-0', 'h-1', 'bg-gray-700');
+                
+                const healthFill = document.createElement('div');
+                healthFill.classList.add('h-full', 'bg-success'); // 使用绿色血条
+                healthFill.style.width = `${(gameState.player.pet.hp / gameState.player.pet.maxHp) * 100}%`;
+                
+                healthBar.appendChild(healthFill);
+                petElement.appendChild(healthBar);
+                
+                gameMap.appendChild(petElement);
+            }
+            
+            // 渲染玩家
+            const playerElement = document.createElement('div');
+            playerElement.classList.add('tile', 'player');
+            playerElement.style.position = 'absolute';
+            playerElement.style.left = `${gameState.player.x * config.tileSize}px`;
+            playerElement.style.top = `${gameState.player.y * config.tileSize}px`;
+            gameMap.appendChild(playerElement);
+        }
+
+        // 显示物品提示
+        function showItemTooltip(item, element) {
+            gameState.showItemTooltip = true;
+            gameState.itemTooltip = {
+                item: item,
+                element: element
+            };
+            
+            // 设置提示内容
+            switch (item.type) {
+                case 'weapon':
+                    itemName.textContent = item.item.name;
+                    itemDesc.textContent = item.item.description;
+                    break;
+                case 'armor':
+                    itemName.textContent = item.item.name;
+                    itemDesc.textContent = item.item.description;
+                    break;
+                case 'potion':
+                    itemName.textContent = item.item.name;
+                    itemDesc.textContent = item.item.description;
+                    break;
+                case 'gold':
+                    itemName.textContent = '金币';
+                    itemDesc.textContent = `获得${item.amount}金币`;
+                    break;
+            }
+            
+            // 显示提示
+            itemTooltip.style.display = 'block';
+            
+            // 更新位置
+            updateItemTooltipPosition();
+        }
+
+        // 隐藏物品提示
+        function hideItemTooltip() {
+            gameState.showItemTooltip = false;
+            itemTooltip.style.display = 'none';
+        }
+
+        // 更新物品提示位置
+        function updateItemTooltipPosition() {
+            if (!gameState.showItemTooltip) return;
+            
+            const rect = gameState.itemTooltip.element.getBoundingClientRect();
+            const mapRect = gameMap.getBoundingClientRect();
+            
+            itemTooltip.style.left = `${rect.left - mapRect.left + 45}px`;
+            itemTooltip.style.top = `${rect.top - mapRect.top}px`;
+        }
+
+        // 处理键盘输入
+        function handleKeyDown(e) {
+            if (!gameState.gameRunning || gameState.gameOver) return;
+            
+            const now = Date.now();
+            
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    if (now - lastPlayerMove > config.playerSpeed) {
+                        movePlayer(0, -1);
+                        lastPlayerMove = now;
+                    }
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    if (now - lastPlayerMove > config.playerSpeed) {
+                        movePlayer(0, 1);
+                        lastPlayerMove = now;
+                    }
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    if (now - lastPlayerMove > config.playerSpeed) {
+                        movePlayer(-1, 0);
+                        lastPlayerMove = now;
+                    }
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    if (now - lastPlayerMove > config.playerSpeed) {
+                        movePlayer(1, 0);
+                        lastPlayerMove = now;
+                    }
+                    break;
+                case 'm':
+                case 'M':
+                    toggleMenu();
+                    break;
+                case 'p':
+                case 'P':
+                    usePotion();
+                    break;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                    // 使用技能
+                    const skillIndex = parseInt(e.key) - 1;
+                    useSkill(skillIndex);
+                    break;
+            }
+        }
+
+        // 移动玩家
+        function movePlayer(dx, dy) {
+            const newX = gameState.player.x + dx;
+            const newY = gameState.player.y + dy;
+            
+            // 检查边界
+            if (
+                newX < 0 ||
+                newX >= config.mapWidth ||
+                newY < 0 ||
+                newY >= config.mapHeight
+            ) {
+                return;
+            }
+            
+            // 检查是否可以移动到目标位置
+            const targetTile = gameState.map[newY][newX];
+            
+            if (targetTile === 'wall') {
+                return; // 不能穿墙
+            }
+            
+            // 检查是否有敌人
+            const enemyAtPosition = gameState.enemies.find(
+                enemy => enemy.x === newX && enemy.y === newY
+            );
+            
+            if (enemyAtPosition) {
+                // 攻击敌人
+                attackEnemy(enemyAtPosition);
+                return;
+            }
+            
+            // 检查是否有物品
+            const itemAtPosition = gameState.items.find(
+                item => item.x === newX && item.y === newY
+            );
+            
+            if (itemAtPosition) {
+                collectItem(itemAtPosition);
+            }
+            
+            // 检查是否是楼梯
+            if (targetTile === 'stairs') {
+                nextLevel();
+                return;
+            }
+            
+            // 移动玩家
+            gameState.player.x = newX;
+            gameState.player.y = newY;
+            
+            // 重新渲染地图
+            renderMap();
+        }
+
+        // 攻击敌人
+        function attackEnemy(enemy) {
+            // 计算伤害
+            const damage = Math.max(1, gameState.player.attack - enemy.defense);
+            enemy.hp -= damage;
+            
+            // 显示伤害文本
+            showDamageText(damage, enemy.x, enemy.y);
+            
+            // 添加战斗日志
+            addLog(`你攻击了${enemy.name}，造成${damage}点伤害`);
+            
+            // 检查敌人是否死亡
+            if (enemy.hp <= 0) {
+                enemyDies(enemy);
+            } else {
+                // 敌人反击
+                enemyAttack(enemy);
+            }
+            
+            // 重新渲染地图
+            renderMap();
+        }
+
+        // 敌人攻击
+        function enemyAttack(enemy) {
+            // 计算伤害
+            const damage = Math.max(1, enemy.attack - gameState.player.defense);
+            gameState.player.hp -= damage;
+            
+            // 显示伤害文本
+            showDamageText(damage, gameState.player.x, gameState.player.y);
+            
+            // 添加战斗日志
+            addLog(`${enemy.name}攻击了你，造成${damage}点伤害`);
+            
+            // 检查玩家是否死亡
+            if (gameState.player.hp <= 0) {
+                gameOver();
+            }
+            
+            // 更新UI
+            updateUI();
+        }
+
+        // 敌人死亡
+        function enemyDies(enemy) {
+            // 添加战斗日志
+            addLog(`你击败了${enemy.name}!`);
+            
+            // 获得经验和金币
+            gameState.player.exp += enemy.exp;
+            gameState.player.gold += enemy.gold;
+            
+            addLog(`获得${enemy.exp}点经验和${enemy.gold}金币`);
+            
+            // 检查是否升级
+            checkLevelUp();
+            
+            // 从敌人列表中移除
+            const enemyIndex = gameState.enemies.indexOf(enemy);
+            if (enemyIndex !== -1) {
+                gameState.enemies.splice(enemyIndex, 1);
+            }
+            
+            // 更新UI
+            updateUI();
+        }
+
+        // 收集物品
+        function collectItem(item) {
+            const player = gameState.player;
+            
+            switch (item.type) {
+                case 'weapon':
+                    // 装备武器
+                    if (player.weapon) {
+                        addLog(`你将${player.weapon.name}替换为${item.item.name}`);
+                    } else {
+                        addLog(`你装备了${item.item.name}`);
+                    }
+                    player.weapon = item.item;
+                    break;
+                    
+                case 'armor':
+                    // 装备护甲
+                    if (player.armor) {
+                        addLog(`你将${player.armor.name}替换为${item.item.name}`);
+                    } else {
+                        addLog(`你装备了${item.item.name}`);
+                    }
+                    player.armor = item.item;
+                    break;
+                    
+                case 'accessory':
+                    // 装备饰品
+                    if (player.accessory) {
+                        addLog(`你将${player.accessory.name}替换为${item.item.name}`);
+                    } else {
+                        addLog(`你装备了${item.item.name}`);
+                    }
+                    player.accessory = item.item;
+                    break;
+                    
+                case 'potion':
+                    // 增加药水数量
+                    player.potions[item.item.id] = (player.potions[item.item.id] || 0) + 1;
+                    addLog(`你获得了一瓶${item.item.name}`);
+                    break;
+                    
+                case 'scroll':
+                    // 增加卷轴
+                    player.scrolls[item.item.id] = item.item;
+                    addLog(`你获得了一张${item.item.name}`);
+                    break;
+                    
+                case 'gold':
+                    // 增加金币
+                    player.gold += item.amount;
+                    addLog(`你获得了${item.amount}金币`);
+                    break;
+            }
+            
+            // 从物品列表中移除
+            const itemIndex = gameState.items.indexOf(item);
+            if (itemIndex !== -1) {
+                gameState.items.splice(itemIndex, 1);
+            }
+            
+            // 更新UI
+            updateUI();
+        }
+
+        // 使用药水
+        function usePotion(type = 'health_potion') {
+            const player = gameState.player;
+            const potionData = itemDatabase.potions[type];
+            
+            if (!player.potions[type] || player.potions[type] <= 0) {
+                return;
+            }
+            
+            // 根据药水类型执行不同效果
+            switch (type) {
+                case 'health_potion':
+                    if (player.hp >= player.maxHp) return;
+                    
+                    // 恢复生命值
+                    const healAmount = potionData.healAmount;
+                    player.hp = Math.min(player.hp + healAmount, player.maxHp);
+                    
+                    // 添加日志
+                    addLog(`你使用了治疗药水，恢复了${healAmount}点生命值`);
+                    
+                    // 显示治疗文本
+                    showFloatingText(`+${healAmount} HP`, player.x, player.y);
+                    break;
+                    
+                case 'mana_potion':
+                    // 如果有魔法值系统，可以在这里实现
+                    addLog(`你使用了魔法药水，但似乎没有效果...`);
+                    break;
+                    
+                case 'strength_potion':
+                    // 添加攻击力buff
+                    player.buffs = player.buffs || [];
+                    player.buffs.push({
+                        name: '力量增强',
+                        effect: { attack: player.attack * potionData.effect.attack },
+                        duration: potionData.duration
+                    });
+                    
+                    addLog(`你使用了力量药水，攻击力提高20%，持续${potionData.duration}回合`);
+                    break;
+                    
+                case 'pet_boost_potion':
+                    if (!player.pet) {
+                        addLog(`你使用了宠物强化药水，但你没有宠物！`);
+                        return;
+                    }
+                    
+                    // 添加宠物属性buff
+                    player.pet.buffs = player.pet.buffs || [];
+                    player.pet.buffs.push({
+                        name: '宠物强化',
+                        effect: {
+                            attack: player.pet.attack * potionData.petBoost,
+                            defense: player.pet.defense * potionData.petBoost,
+                            speed: player.pet.speed * potionData.petBoost
+                        },
+                        duration: potionData.duration
+                    });
+                    
+                    addLog(`你使用了宠物强化药水，${player.pet.name}的属性提高30%，持续${potionData.duration}回合`);
+                    break;
+            }
+            
+            // 减少药水数量
+            player.potions[type]--;
+            
+            // 更新UI
+            updateUI();
+        }
+        
+        // 辅助函数：更新宠物属性跟随主人
+        function updatePetStats(pet, owner) {
+            // 宠物基础属性
+            const baseAttack = pet.baseStats.attack;
+            const baseDefense = pet.baseStats.defense;
+            const baseSpeed = pet.baseStats.speed;
+            const baseHp = pet.baseStats.hp;
+            
+            // 主人属性影响（魔法强度主要影响宠物）
+            const magicBonus = owner.magic * 0.2; // 20%魔法强度转化为宠物属性
+            const attackBonus = owner.attack * 0.1; // 10%攻击力转化为宠物攻击
+            const levelBonus = (owner.level - 1) * 2; // 每级增加2点基础属性
+            
+            // 计算最终属性
+            pet.attack = baseAttack + magicBonus + attackBonus + levelBonus;
+            pet.defense = baseDefense + magicBonus * 0.5 + levelBonus;
+            pet.speed = baseSpeed + (owner.speed - 10) * 0.3 + levelBonus * 0.5;
+            pet.maxHp = baseHp + magicBonus * 2 + levelBonus * 5;
+            pet.hp = Math.min(pet.hp, pet.maxHp); // 确保当前生命值不超过最大值
+        }
+        
+        // 使用技能
+        function useSkill(skillIndex) {
+            const player = gameState.player;
+            
+            if (!player.skills || skillIndex >= player.skills.length) {
+                return;
+            }
+            
+            const skill = player.skills[skillIndex];
+            
+            // 检查技能冷却
+            if (skill.currentCooldown > 0) {
+                addLog(`${skill.name}还在冷却中 (${skill.currentCooldown}回合)`);
+                return;
+            }
+            
+            // 检查技能消耗（如果有）
+            if (skill.cost && (!player.mana || player.mana < skill.cost)) {
+                addLog(`魔法值不足，无法使用${skill.name}`);
+                return;
+            }
+            
+            // 根据技能目标类型处理
+            switch (skill.targetType) {
+                case 'self':
+                    // 对自己使用的技能
+                    executeSkill(skill, player, null, gameState);
+                    break;
+                    
+                case 'pet':
+                    // 对宠物使用的技能
+                    if (!player.pet) {
+                        addLog(`你还没有召唤宠物！`);
+                        return;
+                    }
+                    executeSkill(skill, player, player.pet, gameState);
+                    break;
+                    
+                case 'enemy':
+                    // 需要选择敌人目标的技能
+                    showSkillTargetSelection(skill);
+                    break;
+                    
+                case 'position':
+                    // 需要选择位置的技能
+                    showSkillPositionSelection(skill);
+                    break;
+                    
+                default:
+                    // 默认自动选择目标
+                    const targetEnemy = findNearestEnemyInRange(player, skill.range || 1);
+                    if (targetEnemy) {
+                        executeSkill(skill, player, targetEnemy, gameState);
+                    } else {
+                        addLog(`没有合适的目标使用${skill.name}`);
+                    }
+                    break;
+            }
+        }
+        
+        // 显示技能目标选择
+        function showSkillTargetSelection(skill) {
+            const player = gameState.player;
+            const validTargets = [];
+            
+            // 查找技能范围内的敌人
+            for (const enemy of gameState.enemies) {
+                const distance = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
+                if (distance <= (skill.range || 1)) {
+                    validTargets.push(enemy);
+                }
+            }
+            
+            if (validTargets.length === 0) {
+                addLog(`技能范围内没有敌人！`);
+                return;
+            }
+            
+            // 显示目标选择指示器
+            validTargets.forEach(target => {
+                const indicator = document.createElement('div');
+                indicator.className = 'skill-target-indicator';
+                indicator.style.position = 'absolute';
+                indicator.style.left = `${target.x * config.tileSize}px`;
+                indicator.style.top = `${target.y * config.tileSize}px`;
+                indicator.style.width = `${config.tileSize}px`;
+                indicator.style.height = `${config.tileSize}px`;
+                indicator.style.border = '2px dashed yellow';
+                indicator.style.pointerEvents = 'all';
+                indicator.style.cursor = 'pointer';
+                indicator.style.zIndex = '100';
+                
+                indicator.addEventListener('click', () => {
+                    // 移除所有指示器
+                    document.querySelectorAll('.skill-target-indicator').forEach(el => el.remove());
+                    // 执行技能
+                    executeSkill(skill, player, target, gameState);
+                });
+                
+                gameMap.appendChild(indicator);
+            });
+            
+            // 添加点击地图其他位置取消选择
+            const cancelListener = (e) => {
+                if (!e.target.classList.contains('skill-target-indicator')) {
+                    document.querySelectorAll('.skill-target-indicator').forEach(el => el.remove());
+                    document.removeEventListener('click', cancelListener);
+                }
+            };
+            document.addEventListener('click', cancelListener);
+        }
+        
+        // 显示技能位置选择
+        function showSkillPositionSelection(skill) {
+            const player = gameState.player;
+            
+            // 显示技能范围内的可选择位置
+            for (let y = 0; y < config.mapHeight; y++) {
+                for (let x = 0; x < config.mapWidth; x++) {
+                    const distance = Math.abs(x - player.x) + Math.abs(y - player.y);
+                    if (distance <= (skill.range || 1) && gameState.map[y][x] !== 'wall') {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'skill-position-indicator';
+                        indicator.style.position = 'absolute';
+                        indicator.style.left = `${x * config.tileSize}px`;
+                        indicator.style.top = `${y * config.tileSize}px`;
+                        indicator.style.width = `${config.tileSize}px`;
+                        indicator.style.height = `${config.tileSize}px`;
+                        indicator.style.border = '2px dashed blue';
+                        indicator.style.pointerEvents = 'all';
+                        indicator.style.cursor = 'pointer';
+                        indicator.style.zIndex = '100';
+                        indicator.dataset.x = x;
+                        indicator.dataset.y = y;
+                        
+                        indicator.addEventListener('click', () => {
+                            // 移除所有指示器
+                            document.querySelectorAll('.skill-position-indicator').forEach(el => el.remove());
+                            // 执行技能
+                            const targetPos = { x: parseInt(indicator.dataset.x), y: parseInt(indicator.dataset.y) };
+                            executeSkill(skill, player, targetPos, gameState);
+                        });
+                        
+                        gameMap.appendChild(indicator);
+                    }
+                }
+            }
+            
+            // 添加点击地图其他位置取消选择
+            const cancelListener = (e) => {
+                if (!e.target.classList.contains('skill-position-indicator')) {
+                    document.querySelectorAll('.skill-position-indicator').forEach(el => el.remove());
+                    document.removeEventListener('click', cancelListener);
+                }
+            };
+            document.addEventListener('click', cancelListener);
+        }
+        
+        // 执行技能
+        function executeSkill(skill, user, target, gameState) {
+            let result;
+            
+            try {
+                // 根据技能效果函数的参数数量执行
+                if (skill.effect.length === 3) {
+                    result = skill.effect(user, target, gameState);
+                } else if (skill.effect.length === 2) {
+                    result = skill.effect(user, target);
+                } else {
+                    result = skill.effect(user);
+                }
+            } catch (error) {
+                console.error('技能执行错误:', error);
+                result = { success: false, message: `${skill.name}使用失败！` };
+            }
+            
+            // 处理技能结果
+            if (result && result.success) {
+                addLog(result.message);
+                
+                // 显示伤害文本
+                if (result.damage && result.target) {
+                    showDamageText(result.damage, result.target.x, result.target.y);
+                    
+                    // 检查敌人是否死亡
+                    if (result.target.hp <= 0) {
+                        enemyDies(result.target);
+                    }
+                }
+                
+                // 设置技能冷却
+                if (skill.cooldown) {
+                    skill.currentCooldown = skill.cooldown;
+                }
+                
+                // 消耗魔法值
+                if (skill.cost && user.mana !== undefined) {
+                    user.mana -= skill.cost;
+                }
+                
+                // 重新渲染地图
+                renderMap();
+            } else {
+                addLog(result?.message || `使用${skill.name}失败`);
+            }
+            
+            // 更新UI
+            updateUI();
+        }
+        
+        // 查找范围内最近的敌人
+        function findNearestEnemyInRange(player, range) {
+            let nearestEnemy = null;
+            let minDistance = Infinity;
+            
+            for (const enemy of gameState.enemies) {
+                const distance = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
+                if (distance <= range && distance < minDistance) {
+                    minDistance = distance;
+                    nearestEnemy = enemy;
+                }
+            }
+            
+            return nearestEnemy;
+        }
+
+        // 检查升级
+        function checkLevelUp() {
+            if (gameState.player.exp >= gameState.player.nextLevelExp) {
+                // 升级
+                gameState.player.level++;
+                gameState.player.exp -= gameState.player.nextLevelExp;
+                gameState.player.nextLevelExp = Math.floor(gameState.player.nextLevelExp * config.expMultiplier);
+                gameState.player.statPoints = (gameState.player.statPoints || 0) + 3; // 每级获得3点属性点
+                
+                // 添加日志
+                addLog(`恭喜升级! 你现在是${gameState.player.level}级了!`);
+                addLog(`获得3点属性点！`);
+                
+                // 显示升级动画
+                const playerElement = document.querySelector('.player');
+                if (playerElement) {
+                    playerElement.classList.add('level-up');
+                    setTimeout(() => {
+                        playerElement.classList.remove('level-up');
+                    }, 2000);
+                }
+                
+                // 如果有宠物，宠物也升级
+                if (gameState.player.pet) {
+                    gameState.player.pet.level = gameState.player.level;
+                    updatePetStats(gameState.player.pet, gameState.player);
+                    addLog(`${gameState.player.pet.name}也升级了！`);
+                }
+                
+                updateUI();
+                showStatPointsUI();
+                
+                // 递归检查是否可以连续升级
+                checkLevelUp();
+            }
+        }
+        
+        // 显示属性点分配界面
+        function showStatPointsUI() {
+            const player = gameState.player;
+            if (!player.statPoints || player.statPoints <= 0) return;
+            
+            const statUI = document.getElementById('stat-points-ui');
+            if (!statUI) {
+                const ui = document.createElement('div');
+                ui.id = 'stat-points-ui';
+                ui.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                ui.innerHTML = `
+                    <div class="bg-gray-800 p-6 rounded-lg text-white max-w-md">
+                        <h3 class="text-xl font-bold mb-4">分配属性点 (剩余: <span id="remaining-points">${gameState.player.statPoints}</span>)</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span>生命值 (+20)</span>
+                                <button id="add-hp" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded">+</button>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>攻击力 (+1)</span>
+                                <button id="add-attack" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded">+</button>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>防御力 (+1)</span>
+                                <button id="add-defense" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">+</button>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>魔法强度 (+1)</span>
+                                <button id="add-magic" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded">+</button>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>速度 (+1)</span>
+                                <button id="add-speed" class="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded">+</button>
+                            </div>
+                        </div>
+                        <button id="close-stat-ui" class="mt-6 w-full bg-gray-600 hover:bg-gray-700 py-2 rounded">完成</button>
+                    </div>
+                `;
+                document.body.appendChild(ui);
+                
+                // 添加事件监听器
+                document.getElementById('add-hp').addEventListener('click', () => addStatPoint('hp'));
+                document.getElementById('add-attack').addEventListener('click', () => addStatPoint('attack'));
+                document.getElementById('add-defense').addEventListener('click', () => addStatPoint('defense'));
+                document.getElementById('add-magic').addEventListener('click', () => addStatPoint('magic'));
+                document.getElementById('add-speed').addEventListener('click', () => addStatPoint('speed'));
+                document.getElementById('close-stat-ui').addEventListener('click', closeStatPointsUI);
+            } else {
+                document.getElementById('remaining-points').textContent = player.statPoints;
+                statUI.style.display = 'flex';
+            }
+        }
+        
+        // 添加属性点
+        function addStatPoint(stat) {
+            const player = gameState.player;
+            if (!player.statPoints || player.statPoints <= 0) return;
+            
+            player.statPoints--;
+            document.getElementById('remaining-points').textContent = player.statPoints;
+            
+            switch (stat) {
+                case 'hp':
+                    player.maxHp += 20;
+                    player.hp += 20;
+                    addLog(`生命值上限+20！`);
+                    break;
+                case 'attack':
+                    player.attack += 1;
+                    addLog(`攻击力+1！`);
+                    break;
+                case 'defense':
+                    player.defense += 1;
+                    addLog(`防御力+1！`);
+                    break;
+                case 'magic':
+                    player.magic = (player.magic || 0) + 1;
+                    addLog(`魔法强度+1！`);
+                    break;
+                case 'speed':
+                    player.speed += 1;
+                    addLog(`速度+1！`);
+                    break;
+            }
+            
+            // 如果有宠物，更新宠物属性
+            if (player.pet) {
+                updatePetStats(player.pet, player);
+            }
+            
+            updateUI();
+            
+            // 如果没有剩余属性点，自动关闭
+            if (player.statPoints <= 0) {
+                closeStatPointsUI();
+            }
+        }
+        
+        // 关闭属性点界面
+        function closeStatPointsUI() {
+            const statUI = document.getElementById('stat-points-ui');
+            if (statUI) {
+                statUI.style.display = 'none';
+            }
+        }
+
+        // 进入下一层
+        function nextLevel() {
+            gameState.currentLevel++;
+            
+            // 检查是否达到最大层数
+            if (gameState.currentLevel > config.maxLevels) {
+                gameWin();
+                return;
+            }
+            
+            // 恢复部分生命值
+            const healAmount = Math.floor(gameState.player.maxHp * 0.3);
+            gameState.player.hp = Math.min(gameState.player.hp + healAmount, gameState.player.maxHp);
+            
+            // 生成新地图
+            generateMap();
+            
+            // 添加日志
+            addLog(`你进入了地牢第${gameState.currentLevel}层`);
+            addLog(`你休息了一下，恢复了${healAmount}点生命值`);
+            
+            // 更新UI
+            updateUI();
+        }
+
+        // 游戏结束
+        function gameOver() {
+            gameState.gameRunning = false;
+            gameState.gameOver = true;
+            
+            // 设置最终层数
+            finalLevelDisplay.textContent = gameState.currentLevel;
+            
+            // 显示游戏结束菜单
+            gameOver.classList.remove('hidden');
+            
+            // 添加日志
+            addLog('游戏结束! 你在地牢中倒下了...');
+        }
+
+        // 游戏胜利
+        function gameWin() {
+            gameState.gameRunning = false;
+            
+            // 设置胜利层数
+            winLevelDisplay.textContent = gameState.currentLevel - 1;
+            
+            // 显示胜利菜单
+            gameWin.classList.remove('hidden');
+            
+            // 添加日志
+            addLog('恭喜! 你成功逃离了地牢!');
+        }
+
+        // 显示伤害文本
+        function showDamageText(damage, x, y) {
+            const damageText = document.createElement('div');
+            damageText.classList.add('damage-text');
+            damageText.textContent = `-${damage}`;
+            damageText.style.left = `${x * config.tileSize + 15}px`;
+            damageText.style.top = `${y * config.tileSize + 10}px`;
+            
+            gameMap.appendChild(damageText);
+            
+            // 动画结束后移除
+            setTimeout(() => {
+                damageText.remove();
+            }, 1000);
+        }
+
+        // 显示浮动文本
+        function showFloatingText(text, x, y) {
+            const floatingText = document.createElement('div');
+            floatingText.classList.add('floating-text');
+            floatingText.textContent = text;
+            floatingText.style.left = `${x * config.tileSize + 10}px`;
+            floatingText.style.top = `${y * config.tileSize + 10}px`;
+            
+            gameMap.appendChild(floatingText);
+            
+            // 动画结束后移除
+            setTimeout(() => {
+                floatingText.remove();
+            }, 1000);
+        }
+
+        // 更新UI
+        function updateUI() {
+            const player = gameState.player;
+            if (!player) return;
+            
+            // 更新角色信息
+            document.getElementById('player-name').textContent = player.name;
+            document.getElementById('player-class').textContent = `(${characterDatabase.find(c => c.id === player.characterId)?.name})`;
+            playerLevel.textContent = player.level;
+            playerHp.textContent = `${player.hp}/${player.maxHp}`;
+            hpBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
+            playerExp.textContent = `${player.exp}/${player.nextLevelExp}`;
+            expBar.style.width = `${(player.exp / player.nextLevelExp) * 100}%`;
+            playerGold.textContent = player.gold;
+            document.getElementById('player-speed').textContent = player.speed;
+            
+            // 计算总属性（基础属性 + 装备加成 +  buff加成）
+            let totalAttack = player.attack;
+            let totalDefense = player.defense;
+            let totalMagic = player.magic || 0;
+            let totalEvasion = player.evasion || 0;
+            let totalMagicDefense = player.magicDefense || 0;
+            
+            // 装备加成
+            if (player.weapon) {
+                totalAttack += player.weapon.attack || 0;
+                totalMagic += player.weapon.magic || 0;
+            }
+            
+            if (player.armor) {
+                totalDefense += player.armor.defense || 0;
+                totalMagic += player.armor.magic || 0;
+                totalEvasion += player.armor.evasion || 0;
+            }
+            
+            if (player.legs) {
+                totalDefense += player.legs.defense || 0;
+                totalMagic += player.legs.magic || 0;
+                totalEvasion += player.legs.evasion || 0;
+                totalMagicDefense += player.legs.magicDefense || 0;
+            }
+            
+            if (player.boots) {
+                totalDefense += player.boots.defense || 0;
+                totalMagic += player.boots.magic || 0;
+                totalMagicDefense += player.boots.magicDefense || 0;
+            }
+            
+            if (player.accessory) {
+                totalAttack += player.accessory.attack || 0;
+                totalDefense += player.accessory.defense || 0;
+                totalMagic += player.accessory.magic || 0;
+                totalEvasion += player.accessory.evasion || 0;
+                totalMagicDefense += player.accessory.magicDefense || 0;
+            }
+            
+            // Buff加成
+            if (player.buffs) {
+                player.buffs.forEach(buff => {
+                    if (buff.effect.attack) totalAttack += buff.effect.attack;
+                    if (buff.effect.defense) totalDefense += buff.effect.defense;
+                    if (buff.effect.magic) totalMagic += buff.effect.magic;
+                    if (buff.effect.evasion) totalEvasion += buff.effect.evasion;
+                });
+            }
+            
+            // 更新属性显示
+            playerAttack.textContent = Math.floor(totalAttack);
+            playerDefense.textContent = Math.floor(totalDefense);
+            document.getElementById('player-magic').textContent = Math.floor(totalMagic);
+            document.getElementById('player-evasion').textContent = `${Math.floor(totalEvasion * 100)}%`;
+            document.getElementById('player-magic-defense').textContent = Math.floor(totalMagicDefense);
+            
+            // 更新装备栏
+            updateEquipmentSlot('weapon-slot', player.weapon, '0px 0px');
+            updateEquipmentSlot('armor-slot', player.armor, '30px 0px');
+            updateEquipmentSlot('legs-slot', player.legs, '60px 0px');
+            updateEquipmentSlot('boots-slot', player.boots, '90px 0px');
+            updateEquipmentSlot('accessory-slot', player.accessory, '0px 30px');
+            
+            // 更新药水数量
+            document.getElementById('health-potion-count').textContent = player.potions.health_potion || 0;
+            document.getElementById('mana-potion-count').textContent = player.potions.mana_potion || 0;
+            
+            // 更新卷轴数量
+            const scrollCount = Object.keys(player.scrolls || {}).length;
+            document.getElementById('scroll-count').textContent = scrollCount;
+            
+            // 更新药水按钮状态
+            usePotionBtn.disabled = !player.potions.health_potion || player.hp >= player.maxHp;
+            
+            // 更新当前层数
+            currentLevelDisplay.textContent = gameState.currentLevel;
+            
+            // 更新宠物信息
+            updatePetUI();
+            
+            // 更新技能栏
+            updateSkillsUI();
+        }
+        
+        // 更新装备栏
+        function updateEquipmentSlot(slotId, item, backgroundPosition) {
+            const slot = document.getElementById(slotId);
+            if (item) {
+                slot.style.backgroundImage = "url('https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/e116394a61e24aaf8c7c954c8d1c130a~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=%2BBxjn1DKLERKXjoRTTCBdMfoLuo%3D')";
+                slot.style.backgroundPosition = backgroundPosition;
+                
+                // 构建装备提示信息
+                let tooltip = `${item.name}`;
+                if (item.attack) tooltip += ` - +${item.attack} 攻击`;
+                if (item.defense) tooltip += ` - +${item.defense} 防御`;
+                if (item.magic) tooltip += ` - +${item.magic} 魔法`;
+                if (item.speed) tooltip += ` - ${item.speed > 0 ? '+' : ''}${item.speed} 速度`;
+                if (item.evasion) tooltip += ` - +${Math.floor(item.evasion * 100)}% 闪避`;
+                if (item.petBoost) tooltip += ` - +${item.petBoost}% 宠物属性`;
+                
+                slot.title = tooltip;
+            } else {
+                slot.style.backgroundImage = "none";
+                slot.title = slotId.replace('-slot', '');
+            }
+        }
+        
+        // 更新宠物UI
+        function updatePetUI() {
+            const player = gameState.player;
+            const petSection = document.getElementById('pet-section');
+            
+            if (player.pet) {
+                petSection.classList.remove('hidden');
+                
+                // 更新宠物信息
+                document.getElementById('pet-name').textContent = player.pet.name;
+                document.getElementById('pet-level').textContent = player.pet.level;
+                document.getElementById('pet-hp').textContent = `${player.pet.hp}/${player.pet.maxHp}`;
+                document.getElementById('pet-hp-bar').style.width = `${(player.pet.hp / player.pet.maxHp) * 100}%`;
+                
+                // 设置宠物图标
+                const petIcon = document.getElementById('pet-icon');
+                const petTypes = ['wolf', 'bear', 'eagle', 'dragonling', 'fox', 'rabbit', 'panther', 'phoenix', 'unicorn', 'griffin', 'kraken', 'ancient_dragon', 'celestial_guardian'];
+                const petIndex = petTypes.indexOf(player.pet.id || player.pet.name.toLowerCase());
+                if (petIndex >= 0) {
+                    const row = Math.floor(petIndex / 3);
+                    const col = petIndex % 3;
+                    petIcon.style.backgroundPosition = `-${col * 64}px -${(row + 1) * 64}px`;
+                    petIcon.classList.remove('hidden');
+                } else {
+                    petIcon.classList.add('hidden');
+                }
+                
+                // 计算宠物总属性
+                let petAttack = player.pet.attack;
+                let petDefense = player.pet.defense;
+                let petSpeed = player.pet.speed;
+                
+                // 装备加成（宠物相关装备）
+                if (player.weapon && player.weapon.petBoost) {
+                    petAttack += (petAttack * player.weapon.petBoost / 100);
+                    petDefense += (petDefense * player.weapon.petBoost / 100);
+                    petSpeed += (petSpeed * player.weapon.petBoost / 100);
+                }
+                
+                if (player.armor && player.armor.petBoost) {
+                    petAttack += (petAttack * player.armor.petBoost / 100);
+                    petDefense += (petDefense * player.armor.petBoost / 100);
+                    petSpeed += (petSpeed * player.armor.petBoost / 100);
+                }
+                
+                if (player.accessory && player.accessory.petBoost) {
+                    petAttack += (petAttack * player.accessory.petBoost / 100);
+                    petDefense += (petDefense * player.accessory.petBoost / 100);
+                    petSpeed += (petSpeed * player.accessory.petBoost / 100);
+                }
+                
+                // Buff加成
+                if (player.pet.buffs) {
+                    player.pet.buffs.forEach(buff => {
+                        if (buff.effect.attack) petAttack += buff.effect.attack;
+                        if (buff.effect.defense) petDefense += buff.effect.defense;
+                        if (buff.effect.speed) petSpeed += buff.effect.speed;
+                    });
+                }
+                
+                // 更新宠物属性显示
+                document.getElementById('pet-attack').textContent = Math.floor(petAttack);
+                document.getElementById('pet-defense').textContent = Math.floor(petDefense);
+                document.getElementById('pet-speed').textContent = Math.floor(petSpeed);
+                
+                // 设置宠物图标（简化处理，使用玩家图标）
+                const petIcon = document.getElementById('pet-icon');
+                petIcon.style.backgroundImage = "url('https://p9-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/55eea51652064a3ebfbebd7afc8711db~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260214095854D17AD390C976FE4749AC&rrcfp=f06b921b&x-expires=1773626344&x-signature=Ck7jGFdL4u5FW5JVyRyJxHKNGcM%3D')";
+                petIcon.style.backgroundSize = 'contain';
+                petIcon.style.backgroundPosition = 'center';
+                petIcon.style.backgroundRepeat = 'no-repeat';
+            } else {
+                petSection.classList.add('hidden');
+            }
+        }
+        
+        // 更新技能UI
+        function updateSkillsUI() {
+            const player = gameState.player;
+            const skillsContainer = document.getElementById('skills-container');
+            const skillBar = document.getElementById('skill-bar');
+            
+            // 清空技能容器
+            skillsContainer.innerHTML = '';
+            
+            if (player.skills && player.skills.length > 0) {
+                // 显示技能栏
+                skillBar.classList.remove('hidden');
+                
+                // 更新技能按钮
+                const skillButtons = document.querySelectorAll('.skill-button');
+                skillButtons.forEach((button, index) => {
+                    if (index < player.skills.length) {
+                        const skill = player.skills[index];
+                        button.classList.remove('hidden');
+                        button.textContent = skill.name.substring(0, 2);
+                        button.title = `${skill.name}: ${skill.description} (冷却: ${skill.currentCooldown > 0 ? skill.currentCooldown : '就绪'})`;
+                        
+                        if (skill.currentCooldown > 0) {
+                            button.classList.add('bg-gray-900');
+                            button.classList.remove('hover:bg-gray-600');
+                        } else {
+                            button.classList.remove('bg-gray-900');
+                            button.classList.add('hover:bg-gray-600');
+                        }
+                    } else {
+                        button.classList.add('hidden');
+                    }
+                });
+                
+                // 添加技能到侧边栏
+                player.skills.forEach((skill, index) => {
+                    const skillElement = document.createElement('div');
+                    skillElement.className = 'bg-gray-700 p-2 rounded text-xs';
+                    
+                    const cooldownText = skill.currentCooldown > 0 ? ` (冷却: ${skill.currentCooldown})` : '';
+                    
+                    skillElement.innerHTML = `
+                        <div class="font-bold">${skill.name}${cooldownText}</div>
+                        <div class="text-gray-300">${skill.description}</div>
+                        <div class="text-gray-400">快捷键: ${index + 1}</div>
+                    `;
+                    
+                    skillsContainer.appendChild(skillElement);
+                });
+            } else {
+                skillBar.classList.add('hidden');
+            }
+        }
+
+        // 添加战斗日志
+        function addLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.textContent = message;
+            combatLog.appendChild(logEntry);
+            
+            // 滚动到底部
+            combatLog.scrollTop = combatLog.scrollHeight;
+        }
+
+        // 切换菜单
+        function toggleMenu() {
+            if (gameState.gameOver) return;
+            
+            if (gameMenu.classList.contains('hidden')) {
+                gameMenu.classList.remove('hidden');
+                gameState.gameRunning = false;
+            } else {
+                gameMenu.classList.add('hidden');
+                gameState.gameRunning = true;
+            }
+        }
+
+        // 保存游戏
+        function saveGame() {
+            const saveData = {
+                player: gameState.player,
+                currentLevel: gameState.currentLevel,
+                map: gameState.map,
+                enemies: gameState.enemies,
+                items: gameState.items
+            };
+            
+            localStorage.setItem('roguelikeSave', JSON.stringify(saveData));
+            addLog('游戏已保存');
+            toggleMenu();
+        }
+
+        // 加载游戏
+        function loadGame(savedGame) {
+            try {
+                const saveData = JSON.parse(savedGame);
+                
+                gameState.player = saveData.player;
+                gameState.currentLevel = saveData.currentLevel;
+                gameState.map = saveData.map;
+                gameState.enemies = saveData.enemies;
+                gameState.items = saveData.items;
+                gameState.gameRunning = true;
+                gameState.gameOver = false;
+                
+                // 渲染地图
+                renderMap();
+                
+                // 更新UI
+                updateUI();
+                
+                addLog('游戏已加载');
+            } catch (error) {
+                console.error('加载游戏失败:', error);
+                addLog('加载游戏失败');
+            }
+        }
+
+        // 游戏更新循环
+        function updateGame() {
+            if (!gameState.gameRunning || gameState.gameOver) return;
+            
+            const now = Date.now();
+            
+            // 更新物品提示位置
+            if (gameState.showItemTooltip) {
+                updateItemTooltipPosition();
+            }
+            
+            // 敌人AI移动
+            if (now - lastEnemyMove > config.enemySpeed) {
+                // 增加回合计数器
+                gameState.turnCounter++;
+                
+                // 更新技能冷却
+                updateSkillCooldowns();
+                
+                // 更新buff持续时间
+                updateBuffs();
+                
+                // 宠物行动
+                petAction();
+                
+                // 敌人行动
+                for (const enemy of gameState.enemies) {
+                    // 简单的寻路AI
+                    const dx = gameState.player.x > enemy.x ? 1 : (gameState.player.x < enemy.x ? -1 : 0);
+                    const dy = gameState.player.y > enemy.y ? 1 : (gameState.player.y < enemy.y ? -1 : 0);
+                    
+                    // 根据速度调整移动概率
+                    const moveProbability = 0.7 * (enemy.speed / 10);
+                    
+                    if (Math.random() < moveProbability) {
+                        const newX = enemy.x + dx;
+                        const newY = enemy.y + dy;
+                        
+                        // 检查是否可以移动
+                        if (
+                            newX >= 0 &&
+                            newX < config.mapWidth &&
+                            newY >= 0 &&
+                            newY < config.mapHeight &&
+                            gameState.map[newY][newX] !== 'wall' &&
+                            !(newX === gameState.player.x && newY === gameState.player.y)
+                        ) {
+                            // 检查目标位置是否有其他敌人
+                            const enemyAtPosition = gameState.enemies.find(
+                                e => e !== enemy && e.x === newX && e.y === newY
+                            );
+                            
+                            if (!enemyAtPosition) {
+                                enemy.x = newX;
+                                enemy.y = newY;
+                            }
+                        }
+                    }
+                    
+                    // 检查是否与玩家相邻，如果是则攻击
+                    if (
+                        Math.abs(enemy.x - gameState.player.x) <= 1 &&
+                        Math.abs(enemy.y - gameState.player.y) <= 1
+                    ) {
+                        enemyAttack(enemy);
+                    }
+                }
+                
+                lastEnemyMove = now;
+                
+                // 重新渲染地图
+                renderMap();
+                
+                // 更新UI
+                updateUI();
+            }
+        }
+        
+        // 更新技能冷却
+        function updateSkillCooldowns() {
+            const player = gameState.player;
+            
+            // 更新玩家技能冷却
+            if (player.skills) {
+                player.skills.forEach(skill => {
+                    if (skill.currentCooldown > 0) {
+                        skill.currentCooldown--;
+                    }
+                });
+            }
+            
+            // 更新宠物技能冷却
+            if (player.pet && player.pet.skills) {
+                player.pet.skills.forEach(skill => {
+                    if (skill.currentCooldown > 0) {
+                        skill.currentCooldown--;
+                    }
+                });
+            }
+        }
+        
+        // 更新buff持续时间
+        function updateBuffs() {
+            const player = gameState.player;
+            
+            // 更新玩家buff
+            if (player.buffs) {
+                player.buffs = player.buffs.filter(buff => {
+                    buff.duration--;
+                    return buff.duration > 0;
+                });
+            }
+            
+            // 更新宠物buff
+            if (player.pet && player.pet.buffs) {
+                player.pet.buffs = player.pet.buffs.filter(buff => {
+                    buff.duration--;
+                    return buff.duration > 0;
+                });
+            }
+        }
+        
+        // 宠物行动
+        function petAction() {
+            const player = gameState.player;
+            if (!player.pet || player.pet.hp <= 0) return;
+            
+            // 查找最近的敌人作为目标
+            let targetEnemy = null;
+            let minDistance = Infinity;
+            
+            for (const enemy of gameState.enemies) {
+                const distance = Math.abs(enemy.x - player.pet.x) + Math.abs(enemy.y - player.pet.y);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    targetEnemy = enemy;
+                }
+            }
+            
+            // 如果有敌人且在攻击范围内，使用技能攻击
+            if (targetEnemy && minDistance <= 2) {
+                // 选择一个可用的技能
+                const availableSkills = player.pet.skills.filter(skill => skill.currentCooldown === 0);
+                
+                if (availableSkills.length > 0) {
+                    // 随机选择一个技能
+                    const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+                    
+                    // 执行技能
+                    const result = skill.effect(player.pet, targetEnemy);
+                    
+                    if (result.success) {
+                        addLog(result.message);
+                        
+                        // 显示伤害文本
+                        if (result.damage) {
+                            showDamageText(result.damage, targetEnemy.x, targetEnemy.y);
+                            
+                            // 检查敌人是否死亡
+                            if (targetEnemy.hp <= 0) {
+                                enemyDies(targetEnemy);
+                            }
+                        }
+                        
+                        // 设置技能冷却
+                        if (skill.cooldown) {
+                            skill.currentCooldown = skill.cooldown;
+                        }
+                    }
+                } else {
+                    // 如果没有可用技能，进行普通攻击
+                    const damage = Math.max(1, player.pet.attack - targetEnemy.defense);
+                    targetEnemy.hp -= damage;
+                    
+                    addLog(`${player.pet.name}攻击了${targetEnemy.name}，造成${damage}点伤害`);
+                    showDamageText(damage, targetEnemy.x, targetEnemy.y);
+                    
+                    // 检查敌人是否死亡
+                    if (targetEnemy.hp <= 0) {
+                        enemyDies(targetEnemy);
+                    }
+                }
+            } else if (targetEnemy) {
+                // 如果敌人不在攻击范围内，向敌人移动
+                const dx = targetEnemy.x > player.pet.x ? 1 : (targetEnemy.x < player.pet.x ? -1 : 0);
+                const dy = targetEnemy.y > player.pet.y ? 1 : (targetEnemy.y < player.pet.y ? -1 : 0);
+                
+                const newX = player.pet.x + dx;
+                const newY = player.pet.y + dy;
+                
+                // 检查是否可以移动
+                if (
+                    newX >= 0 &&
+                    newX < config.mapWidth &&
+                    newY >= 0 &&
+                    newY < config.mapHeight &&
+                    gameState.map[newY][newX] !== 'wall' &&
+                    !(newX === player.x && newY === player.y)
+                ) {
+                    // 检查目标位置是否有敌人
+                    const enemyAtPosition = gameState.enemies.find(enemy => enemy.x === newX && enemy.y === newY);
+                    
+                    if (!enemyAtPosition) {
+                        player.pet.x = newX;
+                        player.pet.y = newY;
+                    }
+                }
+            } else {
+                // 如果没有敌人，跟随玩家
+                const dx = player.x > player.pet.x ? 1 : (player.x < player.pet.x ? -1 : 0);
+                const dy = player.y > player.pet.y ? 1 : (player.y < player.pet.y ? -1 : 0);
+                
+                const newX = player.pet.x + dx;
+                const newY = player.pet.y + dy;
+                
+                // 检查是否可以移动
+                if (
+                    newX >= 0 &&
+                    newX < config.mapWidth &&
+                    newY >= 0 &&
+                    newY < config.mapHeight &&
+                    gameState.map[newY][newX] !== 'wall'
+                ) {
+                    player.pet.x = newX;
+                    player.pet.y = newY;
+                }
+            }
+        }
+
+        // 初始化游戏
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+
+</body></html>
